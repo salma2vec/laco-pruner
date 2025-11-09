@@ -1,0 +1,16 @@
+seed: 42
+device: "cpu"
+dtype: "float32"
+model_name: "sshleifer/tiny-gpt2"
+C: 3
+L: 0
+H: 7
+I: 1
+T: 0.999
+partial_merge: "full"
+eval_dataset: "wmt16"
+eval_dataset_config: "de-en"
+eval_split: "test[:4]"
+eval_max_new_tokens: 8
+max_calib_samples: 4
+
