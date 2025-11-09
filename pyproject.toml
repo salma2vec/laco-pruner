@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "laco-pruner"
+version = "0.1.0"
+description = "Reference LaCO implementation: layer collapse pruning for LLMs"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
