@@ -13,8 +13,9 @@ class LaCoConfig:
     H: Optional[int] = None  # upper layer bound (None -> last layer index)
     I: int = 1  # min interval between adjacent merges
     T: float = 0.995  # similarity threshold (cosine), few-shot
-    calibration_batch: int = 8
+    calibration_batch: int = 8  # batch size for representation extraction
     max_calib_samples: int = 16
+    use_kv_cache: bool = False  # experimental KV cache for faster calibration
     eval_split: str = "test[:32]"
     eval_dataset: str = "wmt16"
     eval_dataset_config: Optional[str] = "de-en"
