@@ -1,12 +1,7 @@
 from typing import List, Dict, Any, Optional
 import torch
 from datasets import load_dataset
-from sacrebleu import corpus_bleu
-try:
-    from chrf import compute_chrf
-except ImportError:
-    # fallback if chrf not available
-    compute_chrf = None
+from sacrebleu import corpus_bleu, corpus_chrf
 from laco.model_utils import load_model_tokenizer
 from laco.profiling import profile_generation_speed
 import math
@@ -15,25 +10,16 @@ import logging
 log = logging.getLogger(__name__)
 
 def compute_bleu(preds: List[str], refs: List[str]) -> float:
-def compute_bleu(preds: List[str], refs: List[str]) -> float:
+    return corpus_bleu(preds, [refs]).score
 
 def compute_chrf_score(preds: List[str], refs: List[str]) -> Optional[float]:
-def compute_chrf_score(preds: List[str], refs: List[str]) -> Optional[float]:
-    if compute_chrf is None:
-        log.warning("chrf package not available, skipping chrF metric")
-        return None
+    # computes chrF using sacrebleu
     try:
-        # chrf expects different format - simplified version
-        scores = []
-        for pred, ref in zip(preds, refs):
-            score = compute_chrf([ref], pred)
-            scores.append(score)
-        return sum(scores) / len(scores) if scores else None
+        return corpus_chrf(preds, [refs]).score
     except Exception as e:
         log.warning(f"Failed to compute chrF: {e}")
         return None
 
-def compute_ppl(model, tokenizer, texts: List[str], device="cpu") -> float:
 def compute_ppl(model, tokenizer, texts: List[str], device="cpu") -> float:
     model.eval()
     total_ll = 0.0
@@ -55,7 +41,7 @@ def compute_ppl(model, tokenizer, texts: List[str], device="cpu") -> float:
     return math.exp(avg_loss)
 
 def run_eval(
-def run_eval(
+    cfg, 
     model_name: str, 
     pruned_state_path: str=None,
     include_speed: bool = True

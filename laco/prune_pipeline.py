@@ -9,10 +9,10 @@ from laco.similarity import extract_representations, avg_cosine_similarity
 log = logging.getLogger(__name__)
 
 def load_state_dict(model):
-def load_state_dict(model):
+    return {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
 def pipeline_prune(
-def pipeline_prune(
+    cfg,
     model_name: str,
     few_shot_texts: List[str],
     partial: str = "full",
@@ -48,7 +48,8 @@ def pipeline_prune(
         tmp_state = rdscl_merge_state_dict(M_star_state, layer_base, num_layers, l, K, partial=partial)
 
         # load tmp into a clone of model to evaluate representations
-        tmp_model = model.__class__.from_config(model.config)
+        from transformers import AutoModelForCausalLM
+        tmp_model = AutoModelForCausalLM.from_config(model.config)
         tmp_model.load_state_dict({k: v.clone() for k, v in tmp_state.items()}, strict=False)
 
         # extract reps (use batching if we have many texts)

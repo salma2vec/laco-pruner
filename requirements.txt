@@ -4,7 +4,6 @@ datasets>=2.12
 scipy
 numpy
 sacrebleu
-chrF>=0.1.8
 pyyaml
 tqdm
 pytest

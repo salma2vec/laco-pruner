@@ -7,7 +7,7 @@ import logging
 log = logging.getLogger(__name__)
 
 def find_layer_prefixes(state_dict: Dict[str, torch.Tensor]) -> Tuple[str, int]:
-def find_layer_prefixes(state_dict: Dict[str, torch.Tensor]) -> Tuple[str, int]:
+    # detects layer naming pattern and counts layers
     # try known patterns first (faster and more reliable)
     known_patterns = [
         ("model.layers", r"^model\.layers\.(\d+)\.", "model.layers"),
@@ -50,7 +50,7 @@ def find_layer_prefixes(state_dict: Dict[str, torch.Tensor]) -> Tuple[str, int]:
     return base, num_layers
 
 def partition_keys_by_layer(state_dict: Dict[str, torch.Tensor], layer_base: str, num_layers: int) -> Dict[int, List[str]]:
-def partition_keys_by_layer(state_dict: Dict[str, torch.Tensor], layer_base: str, num_layers: int) -> Dict[int, List[str]]:
+    per_layer = {i: [] for i in range(num_layers)}
     for k in state_dict.keys():
         m = re.match(rf"^{re.escape(layer_base)}\.([0-9]+)\.(.*)$", k)
         if m:
@@ -59,7 +59,7 @@ def partition_keys_by_layer(state_dict: Dict[str, torch.Tensor], layer_base: str
     return per_layer
 
 def rdscl_merge_state_dict(
-def rdscl_merge_state_dict(
+    state_dict: Dict[str, torch.Tensor],
     layer_base: str,
     num_layers: int,
     l: int,
@@ -85,7 +85,7 @@ def rdscl_merge_state_dict(
     # helper to categorize keys as attn/ffn/other
     # covers most common architectures: GPT-2, Llama, Baichuan, Gemma, etc.
     def key_category(key: str) -> str:
-    def key_category(key: str) -> str:
+        key_lower = key.lower()
         # attention patterns
         attn_patterns = (
             "q_proj", "k_proj", "v_proj", "qkv", 

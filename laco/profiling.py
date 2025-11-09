@@ -8,7 +8,7 @@ import logging
 log = logging.getLogger(__name__)
 
 def get_memory_usage(device: str = "cpu") -> Dict[str, float]:
-def get_memory_usage(device: str = "cpu") -> Dict[str, float]:
+    # returns memory usage in MB
     if device.startswith("cuda") and torch.cuda.is_available():
         return {
             "allocated_mb": torch.cuda.memory_allocated() / 1024**2,
@@ -24,7 +24,7 @@ def get_memory_usage(device: str = "cpu") -> Dict[str, float]:
         }
 
 def profile_generation_speed(
-def profile_generation_speed(
+    model, 
     tokenizer, 
     texts: list, 
     max_new_tokens: int = 64,

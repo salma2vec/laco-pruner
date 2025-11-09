@@ -19,11 +19,11 @@ class AblationConfig:
     name: str = ""  # optional name for this config
     
     def __post_init__(self):
-    def __post_init__(self):
+        if not self.name:
             self.name = f"C{self.C}_I{self.I}_T{self.T:.3f}_{self.partial}"
 
 def generate_ablation_grid(
-def generate_ablation_grid(
+    C_values: List[int] = [2, 3, 4],
     I_values: List[int] = [1, 2],
     T_values: List[float] = [0.99, 0.995, 0.999],
     partial_modes: List[str] = ["full", "attn", "ffn"]
@@ -37,7 +37,7 @@ def generate_ablation_grid(
     return configs
 
 def run_ablation_sweep(
-def run_ablation_sweep(
+    base_cfg: LaCoConfig,
     few_shot_texts: List[str],
     ablation_configs: List[AblationConfig],
     output_dir: str = "outputs/ablations"
@@ -87,7 +87,7 @@ def run_ablation_sweep(
     return results
 
 def save_ablation_results(results: List[Dict[str, Any]], output_path: str):
-def save_ablation_results(results: List[Dict[str, Any]], output_path: str):
+    # saves results to yaml file
     import yaml
     with open(output_path, 'w') as f:
         yaml.dump(results, f, default_flow_style=False)

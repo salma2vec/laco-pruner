@@ -10,15 +10,15 @@ log = logging.getLogger(__name__)
 
 class TextDataset(Dataset):
     def __init__(self, texts: List[str], tokenizer, max_length: int = 512):
-    def __init__(self, texts: List[str], tokenizer, max_length: int = 512):
+        self.texts = texts
         self.tokenizer = tokenizer
         self.max_length = max_length
     
     def __len__(self):
-    def __len__(self):
+        return len(self.texts)
     
     def __getitem__(self, idx):
-    def __getitem__(self, idx):
+        text = self.texts[idx]
         enc = self.tokenizer(
             text,
             truncation=True,
@@ -33,7 +33,7 @@ class TextDataset(Dataset):
         }
 
 def fine_tune_pruned_model(
-def fine_tune_pruned_model(
+    model_path: str,
     pruned_state_path: str,
     train_texts: List[str],
     output_path: str,
