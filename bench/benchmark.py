@@ -9,6 +9,36 @@ import logging
 
 log = logging.getLogger(__name__)
 
+def _batch_generate(model, tokenizer, texts: List[str], max_new_tokens: int, device: str, batch_size: int = 4) -> List[str]:
+    """Generate predictions in batches for better performance."""
+    predictions = []
+    model.eval()
+    
+    for i in range(0, len(texts), batch_size):
+        batch_texts = texts[i:i+batch_size]
+        with torch.no_grad():
+            # Tokenize batch with padding
+            inputs = tokenizer(
+                batch_texts, 
+                return_tensors="pt", 
+                padding=True, 
+                truncation=True
+            ).to(device)
+            
+            # Generate for batch
+            outputs = model.generate(
+                inputs.input_ids,
+                attention_mask=inputs.attention_mask,
+                max_new_tokens=max_new_tokens,
+                do_sample=False
+            )
+            
+            # Decode each output
+            for out in outputs:
+                predictions.append(tokenizer.decode(out.tolist(), skip_special_tokens=True))
+    
+    return predictions
+
 def compute_bleu(preds: List[str], refs: List[str]) -> float:
     return corpus_bleu(preds, [refs]).score
 
@@ -57,11 +87,8 @@ def run_eval(
 
     # baseline generation
     log.info("Evaluating baseline model...")
-    preds_base = []
-    for s in sources:
-        with torch.no_grad():
-            out = model.generate(**tokenizer(s, return_tensors="pt").to(cfg.device), max_new_tokens=cfg.eval_max_new_tokens)
-        preds_base.append(tokenizer.decode(out[0].tolist(), skip_special_tokens=True))
+    batch_size = getattr(cfg, 'eval_batch_size', 4)
+    preds_base = _batch_generate(model, tokenizer, sources, cfg.eval_max_new_tokens, cfg.device, batch_size)
 
     base_bleu = compute_bleu(preds_base, targets)
     base_chrf = compute_chrf_score(preds_base, targets)
@@ -87,11 +114,7 @@ def run_eval(
         pruned_model.load_state_dict(sd, strict=False)
         pruned_model.to(cfg.device)
 
-        preds_p = []
-        for s in sources:
-            with torch.no_grad():
-                out = pruned_model.generate(**tokenizer(s, return_tensors="pt").to(cfg.device), max_new_tokens=cfg.eval_max_new_tokens)
-            preds_p.append(tokenizer.decode(out[0].tolist(), skip_special_tokens=True))
+        preds_p = _batch_generate(pruned_model, tokenizer, sources, cfg.eval_max_new_tokens, cfg.device, batch_size)
 
         pruned_bleu = compute_bleu(preds_p, targets)
         pruned_chrf = compute_chrf_score(preds_p, targets)
