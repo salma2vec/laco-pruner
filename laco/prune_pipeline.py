@@ -9,7 +9,9 @@ from laco.similarity import extract_representations, avg_cosine_similarity
 log = logging.getLogger(__name__)
 
 def load_state_dict(model):
-    return {k: v.cpu().clone() for k, v in model.state_dict().items()}
+    # Return reference to state dict items without deep cloning for performance
+    # The caller should handle cloning if needed
+    return {k: v for k, v in model.state_dict().items()}
 
 def pipeline_prune(
     cfg,
@@ -36,6 +38,12 @@ def pipeline_prune(
     l = H - C
     M_star_state = state
     accepted_merges = []
+    
+    # Create reusable temporary model once instead of in each iteration
+    from transformers import AutoModelForCausalLM
+    tmp_model = AutoModelForCausalLM.from_config(model.config)
+    tmp_model.to(device)
+    tmp_model.eval()
 
     while l >= L:
         K = min(C - 1, (num_layers - 1) - l)  # number of following layers we can merge
@@ -47,10 +55,8 @@ def pipeline_prune(
 
         tmp_state = rdscl_merge_state_dict(M_star_state, layer_base, num_layers, l, K, partial=partial)
 
-        # load tmp into a clone of model to evaluate representations
-        from transformers import AutoModelForCausalLM
-        tmp_model = AutoModelForCausalLM.from_config(model.config)
-        tmp_model.load_state_dict({k: v.clone() for k, v in tmp_state.items()}, strict=False)
+        # Reuse tmp_model by loading state dict instead of creating new model
+        tmp_model.load_state_dict(tmp_state, strict=False)
 
         # extract reps (use batching if we have many texts)
         batch_size = getattr(cfg, 'calibration_batch', 1)

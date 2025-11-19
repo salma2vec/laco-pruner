@@ -7,20 +7,23 @@ import logging
 
 log = logging.getLogger(__name__)
 
+# Constant for byte-to-megabyte conversion
+_BYTES_TO_MB = 1024 ** 2
+
 def get_memory_usage(device: str = "cpu") -> Dict[str, float]:
     # returns memory usage in MB
     if device.startswith("cuda") and torch.cuda.is_available():
         return {
-            "allocated_mb": torch.cuda.memory_allocated() / 1024**2,
-            "reserved_mb": torch.cuda.memory_reserved() / 1024**2,
-            "max_allocated_mb": torch.cuda.max_memory_allocated() / 1024**2,
+            "allocated_mb": torch.cuda.memory_allocated() / _BYTES_TO_MB,
+            "reserved_mb": torch.cuda.memory_reserved() / _BYTES_TO_MB,
+            "max_allocated_mb": torch.cuda.max_memory_allocated() / _BYTES_TO_MB,
         }
     else:
         process = psutil.Process(os.getpid())
         mem_info = process.memory_info()
         return {
-            "rss_mb": mem_info.rss / 1024**2,
-            "vms_mb": mem_info.vms / 1024**2,
+            "rss_mb": mem_info.rss / _BYTES_TO_MB,
+            "vms_mb": mem_info.vms / _BYTES_TO_MB,
         }
 
 def profile_generation_speed(

@@ -6,6 +6,15 @@ import time
 
 log = logging.getLogger(__name__)
 
+def _get_hidden_states(model_output):
+    """Extract hidden states from model output in a consistent way."""
+    if hasattr(model_output, 'hidden_states') and model_output.hidden_states is not None:
+        return model_output.hidden_states[-1]
+    elif hasattr(model_output, 'last_hidden_state'):
+        return model_output.last_hidden_state
+    else:
+        return model_output.logits
+
 def avg_cosine_similarity(reprs_a: torch.Tensor, reprs_b: torch.Tensor) -> float:
     assert reprs_a.shape == reprs_b.shape
     with torch.no_grad():
@@ -26,27 +35,19 @@ def extract_representations(
     model.to(device)
     model.eval()
     
-    # batch processing for speed
-    if batch_size > 1 and len(texts) > batch_size:
+    # Use batch processing when beneficial (more than 1 text and batch_size > 0)
+    if batch_size > 1 and len(texts) > 1:
         return _extract_representations_batched(model, tokenizer, texts, device, max_length, batch_size, use_kv_cache)
     
-    # original single-item processing
+    # Single-item processing for very small inputs or batch_size=1
     reps = []
     for t in texts:
         enc = tokenizer(t, return_tensors="pt", truncation=True, max_length=max_length)
         input_ids = enc.input_ids.to(device)
         with torch.no_grad():
-            if use_kv_cache:
-                out = model(input_ids=input_ids, use_cache=True, output_hidden_states=True)
-            else:
-                out = model(input_ids=input_ids, output_hidden_states=True)
-            # get last layer hidden states
-            if hasattr(out, 'hidden_states') and out.hidden_states is not None:
-                hidden_states = out.hidden_states[-1]
-            elif hasattr(out, 'last_hidden_state'):
-                hidden_states = out.last_hidden_state
-            else:
-                hidden_states = out.logits
+            out = model(input_ids=input_ids, use_cache=use_kv_cache, output_hidden_states=True)
+            # Extract hidden states using helper
+            hidden_states = _get_hidden_states(out)
             last = hidden_states[:, -1, :].squeeze(0).detach().cpu()
             reps.append(last)
     return torch.stack(reps, dim=0)  # (N, D)
@@ -55,9 +56,8 @@ def _extract_representations_batched(
     model, tokenizer, texts: List[str], device: str, 
     max_length: int, batch_size: int, use_kv_cache: bool
 ) -> torch.Tensor:
-    # batched version for gpu
-    model.to(device)
-    model.eval()
+    # batched version for faster processing
+    # Note: model is already on device and in eval mode from caller
     reps = []
     
     for i in range(0, len(texts), batch_size):
@@ -74,14 +74,10 @@ def _extract_representations_batched(
         attention_mask = encodings.attention_mask.to(device)
         
         with torch.no_grad():
-            out = model(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
-            # get last layer hidden states
-            if hasattr(out, 'hidden_states') and out.hidden_states is not None:
-                hidden_states = out.hidden_states[-1]
-            elif hasattr(out, 'last_hidden_state'):
-                hidden_states = out.last_hidden_state
-            else:
-                hidden_states = out.logits
+            out = model(input_ids=input_ids, attention_mask=attention_mask, 
+                       use_cache=use_kv_cache, output_hidden_states=True)
+            # Extract hidden states using helper
+            hidden_states = _get_hidden_states(out)
             # get last non-padded token for each sequence
             seq_lengths = attention_mask.sum(dim=1) - 1
             batch_reps = hidden_states[torch.arange(len(batch_texts)), seq_lengths].detach().cpu()
